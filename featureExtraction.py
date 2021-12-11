@@ -5,9 +5,10 @@ import SimpleITK as sitk
 import radiomics
 from radiomics import featureextractor
 
+import csv
 
 
-series_to_Test = "002/"
+series_to_Test = "001/"
 
 
 
@@ -18,7 +19,7 @@ directory_processing("examples/"+series_to_Test, target_dir)
 
 
 logger = radiomics.logger
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 handler = logging.FileHandler(filename='testLog.txt', mode='w')
 formatter = logging.Formatter("%(levelname)s:%(name)s: %(message)s")
@@ -35,6 +36,10 @@ extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
 
 featureVector = extractor.execute(imageName, maskName)
 
-for featureName in featureVector.keys():
-  print("Computed %s: %s" % (featureName, featureVector[featureName]))
+f = open("processed/"+ series_to_Test+"features.csv", 'w',newline='')
+writer = csv.writer(f)
 
+for featureName in featureVector.keys():
+    writer.writerow([featureName, featureVector[featureName]])
+
+f.close()
