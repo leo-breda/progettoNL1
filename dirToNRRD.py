@@ -6,26 +6,25 @@ import nrrd
 import xml.etree.ElementTree as ET
 from skimage.segmentation import flood_fill
 
-# import humanize #utilità varie, eliminabile
-# from datetime import datetime #controllo su tempo di esecuzione
+# import humanize 
+# from datetime import datetime
 import logging
 
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# variabile per comodità del type hinting
+# type hinting utility
 Dicom_Dataset = pdcm.dataset.FileDataset
 
 
 def create_VolImg(list2D: list) -> np.ndarray:
-    list3D = list2D[0]  # .astype(np.float32) #serve int o float ??
+    list3D = list2D[0]
 
     for layer in list2D[1:]:
         list3D = np.dstack((list3D, layer))
 
     list3D = np.swapaxes(list3D, 0, 1)
-    list3D = list3D[:, :, ::-1]
 
     return list3D
 
@@ -49,7 +48,7 @@ def isValid(checked, to_Check) -> bool:
     """
     some checks to see if some parameters are the same in all files
     """
-    # capire se effetivamente sono questi i controlli corretti da fare
+    
     if not (checked.PatientID == to_Check.PatientID):
         return False
     if not (checked.SeriesNumber == to_Check.SeriesNumber):
@@ -63,6 +62,7 @@ def isValid(checked, to_Check) -> bool:
 
 
 def parseXML(XMLfilename: str) -> list:
+
     listXML = []
     listNodule = []
     listCOO = []
@@ -78,7 +78,7 @@ def parseXML(XMLfilename: str) -> list:
                 for subchild in child:
                     if subchild.tag == '{http://www.nih.gov}roi':
                         for roi in subchild:
-                            if(roi.tag == '{http://www.nih.gov}imageZposition'):
+                            if roi.tag == '{http://www.nih.gov}imageZposition':
                                 zCoord = float(roi.text)
                             if roi.tag == '{http://www.nih.gov}edgeMap':
                                 for coo in list(zip(roi, roi[1:]))[::2]:
@@ -104,7 +104,7 @@ def scroll_dir(path_to_dir: str) -> (list, dict, list):
     dirListXML = []
     fileList = os.listdir(path_to_dir)
 
-    run_once = True  # trovare modo più efficiente per estrarre i dati del primo .dcm?
+    run_once = True
 
     for filename in fileList:
         if filename.endswith(".dcm"):
@@ -125,12 +125,12 @@ def scroll_dir(path_to_dir: str) -> (list, dict, list):
             dirListXML = parseXML(path_to_dir+filename)
         else:
             logger.info(filename + " is not .dcm or .xml")
+            
     return dirListDCM, optionsDCM, dirListXML
 
 
-def fillHoles(layer: np.ndarray) -> np.ndarray:
+def fillRegion(layer: np.ndarray) -> np.ndarray:
 
-    # suppongo che il contorno sia chiuso, è ragionevole?
     filled = flood_fill(layer, (1, 1), 2, connectivity=1)
     filled[filled == 0] = 1
     filled[filled == 2] = 0
@@ -142,19 +142,18 @@ def create_Mask(listXML: list, options: dict, shape: tuple) -> (np.ndarray, dict
     optionsMask = dict()
     maskList = []
     layer = np.zeros((shape[0], shape[1]), dtype=np.short)
-    listXML.sort()
+    
     for readingSession in listXML:
         mask = np.zeros(shape, dtype=np.short)
         for Zlevel in readingSession[1]:
             for coo in Zlevel[1]:
                 layer[coo] = 1
-            layer = fillHoles(layer)
+            layer = fillRegion(layer)
             level = (Zlevel[0] - options["space origin"]._list[2]
                      )/options["space directions"][2][2]
             mask[:, :, int(-level)] = layer
             layer = np.zeros((shape[0], shape[1]), dtype=np.short)
-        mask = np.swapaxes(mask, 0, 1)
-        mask = mask[:, :, ::-1]
+            
         maskList.append(mask)
 
     optionsMask = options
@@ -163,27 +162,37 @@ def create_Mask(listXML: list, options: dict, shape: tuple) -> (np.ndarray, dict
 
 
 def create_nrrd(data3D: np.ndarray, nrrdFileName: str, options) -> None:
+    
     nrrd.write(nrrdFileName, data3D, options)
+    
     return
 
 
 def directory_processing(path_to_dir: str, target_dir: str) -> None:
+    
     Path(target_dir).mkdir(parents=True, exist_ok=True)
+    
     listFromDCM, optionsDCM, listFromXML = scroll_dir(path_to_dir)
     VolImg = create_VolImg(listFromDCM)
-    MaskList, optionsMask = create_Mask(listFromXML, optionsDCM, VolImg.shape)
     create_nrrd(VolImg, target_dir+"image.nrrd", optionsDCM)
+    
+    MaskList, optionsMask = create_Mask(listFromXML, optionsDCM, VolImg.shape)
     i = 0
     for mask in MaskList:
         i = i + 1
         create_nrrd(mask, target_dir+"seg_"+str(i)+".nrrd", optionsMask)
+        
     return
 
 
 if __name__ == "__main__":
+    
     #startTime = datetime.now()
-    series_to_Test = "002/"
+    
+    series_to_Test = "001/"
     target_dir = "processed/" + series_to_Test
     directory_processing(
-        "examples/"+series_to_Test, target_dir)  # endTime = datetime.now()
+        "examples/"+series_to_Test, target_dir)  
+    
+    # endTime = datetime.now()
     #logger.info(f"Excecution time is: {humanize.precisedelta(endTime-startTime, suppress=['days'], format='%0.4f')}")
