@@ -8,15 +8,15 @@ from radiomics import featureextractor
 import csv
 
 
-series_to_Test = "001/"
 
+series_to_Test = "0024/"
+mask = "seg_1"
 
 
 target_dir = "processed/"+ series_to_Test
 imageName = target_dir+"image.nrrd"
-maskName = target_dir+"seg_1.nrrd"
+maskName = target_dir+mask+".nrrd"
 directory_processing("examples/"+series_to_Test, target_dir)
-
 
 logger = radiomics.logger
 logger.setLevel(logging.INFO)
@@ -36,7 +36,7 @@ extractor = featureextractor.RadiomicsFeatureExtractor(**settings)
 
 featureVector = extractor.execute(imageName, maskName)
 
-f = open("processed/"+ series_to_Test+"features.csv", 'w',newline='')
+f = open("processed/"+ series_to_Test+"features_"+mask+".csv", 'w',newline='')
 writer = csv.writer(f)
 
 for featureName in featureVector.keys():

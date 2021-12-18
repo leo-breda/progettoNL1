@@ -19,17 +19,21 @@ Dicom_Dataset = pdcm.dataset.FileDataset
 
 
 def create_VolImg(list2D: list) -> np.ndarray:
+    
     list3D = list2D[0]
 
+    #concatenation of the layers
     for layer in list2D[1:]:
         list3D = np.dstack((list3D, layer))
 
+    #geometric adaptations
     list3D = np.swapaxes(list3D, 0, 1)
 
     return list3D
 
 
 def dicom_options(image: Dicom_Dataset) -> dict:
+    
     # options for pynrrd
     options = dict()
     options['type'] = 'int'
@@ -81,6 +85,7 @@ def parseXML(XMLfilename: str) -> list:
                             if roi.tag == '{http://www.nih.gov}imageZposition':
                                 zCoord = float(roi.text)
                             if roi.tag == '{http://www.nih.gov}edgeMap':
+                                #saving coordinates 
                                 for coo in list(zip(roi, roi[1:]))[::2]:
                                     listCOO.append(
                                         (int(coo[0].text), int(coo[1].text)))
@@ -189,7 +194,7 @@ if __name__ == "__main__":
     
     #startTime = datetime.now()
     
-    series_to_Test = "001/"
+    series_to_Test = "0001/"
     target_dir = "processed/" + series_to_Test
     directory_processing(
         "examples/"+series_to_Test, target_dir)  
